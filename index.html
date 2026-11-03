@@ -10,39 +10,67 @@
 </head>
 <body>
 
-  <!-- Arcade Cabinet Monitor Bezel -->
-  <main class="cabinet-bezel">
-    <div class="screen-wrapper">
-      <canvas id="game-canvas" width="480" height="480"></canvas>
-      <div id="crt-overlay" class="crt-overlay"></div>
-    </div>
+  <!-- Perspective 4-Wall Room Background matching reference illustration -->
+  <svg class="room-perspective-bg" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true">
+    <!-- Top wall (dark slate navy) -->
+    <polygon points="0,0 1000,0 780,140 220,140" fill="#2f2e50" />
+    <!-- Bottom wall (lighter slate periwinkle) -->
+    <polygon points="0,800 1000,800 780,660 220,660" fill="#6060a8" />
+    <!-- Left wall (medium periwinkle) -->
+    <polygon points="0,0 220,140 220,660 0,800" fill="#494883" />
+    <!-- Right wall (medium periwinkle) -->
+    <polygon points="1000,0 780,140 780,660 1000,800" fill="#494883" />
+    <!-- Perspective Corner Seam Shadows -->
+    <line x1="0" y1="0" x2="220" y2="140" stroke="#242340" stroke-width="2.5" />
+    <line x1="1000" y1="0" x2="780" y2="140" stroke="#242340" stroke-width="2.5" />
+    <line x1="0" y1="800" x2="220" y2="660" stroke="#242340" stroke-width="2.5" />
+    <line x1="1000" y1="800" x2="780" y2="660" stroke="#242340" stroke-width="2.5" />
+  </svg>
 
-    <!-- Virtual Mobile Touch Controls (shown on small screens) -->
-    <section class="mobile-controls" aria-label="Controles táctiles móviles">
-      <div class="d-pad">
-        <div></div>
-        <button id="btn-up" class="d-btn" aria-label="Arriba">▲</button>
-        <div></div>
-        <button id="btn-left" class="d-btn" aria-label="Izquierda">◀</button>
-        <div></div>
-        <button id="btn-right" class="d-btn" aria-label="Derecha">▶</button>
-        <div></div>
-        <button id="btn-down" class="d-btn" aria-label="Abajo">▼</button>
-        <div></div>
+  <div class="arcade-viewport">
+    <!-- Arcade Cabinet Chassis -->
+    <main class="arcade-cabinet">
+      <!-- 4:3 Rounded CRT / LCD Dot-Matrix Monitor -->
+      <div class="screen-wrapper">
+        <canvas id="game-canvas" width="560" height="420"></canvas>
+        <div id="crt-overlay" class="lcd-dotmatrix-overlay"></div>
       </div>
 
-      <div class="action-buttons">
-        <button id="btn-b" class="act-btn btn-b" aria-label="Pausa o Atrás">ESC</button>
-        <button id="btn-a" class="act-btn btn-a" aria-label="Iniciar o Confirmar">START</button>
-      </div>
-    </section>
-  </main>
+      <!-- Non-Interactive Decorative Hardware Control Deck (Joystick + Pushbuttons) -->
+      <section class="arcade-control-deck" aria-hidden="true">
+        <!-- Arcade Joystick (Palanca) -->
+        <div class="joystick-assembly">
+          <div class="joystick-washer"></div>
+          <div class="joystick-shaft"></div>
+          <div class="joystick-balltop"></div>
+        </div>
 
-  <!-- Footer Instructions -->
-  <footer class="arcade-footer">
-    <p>Teclas: [W, A, S, D] o [Flechas] • [Enter / Espacio] Iniciar • [P / Esc] Pausa</p>
-    <p>Desarrollado por <a href="https://github.com/Jlpineda12" target="_blank" rel="noopener">Jose Luis Pineda (Jlpineda12)</a></p>
-  </footer>
+        <div class="deck-label">★ ARCADE 1984 ★</div>
+
+        <!-- Arcade Pushbuttons (Botones) -->
+        <div class="buttons-assembly">
+          <div class="arcade-btn-socket">
+            <div class="arcade-pushbutton">
+              <div class="btn-cap cap-amber"></div>
+            </div>
+            <span class="btn-tag">A</span>
+          </div>
+          <div class="arcade-btn-socket">
+            <div class="arcade-pushbutton">
+              <div class="btn-cap cap-red"></div>
+            </div>
+            <span class="btn-tag">B</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Instructions & Credits -->
+    <footer class="arcade-footer">
+      <p>Teclado: [W, A, S, D] o [Flechas] para moverte • [Enter / Espacio] Iniciar • [P / Esc] Pausa</p>
+      <p>Desarrollado por <a href="https://github.com/Jlpineda12" target="_blank" rel="noopener">Jose Luis Pineda (Jlpineda12)</a> • Ingeniería en Multimedia</p>
+    </footer>
+  </div>
 
   <!-- App Entry Script -->
   <script type="module" src="src/main.js"></script>

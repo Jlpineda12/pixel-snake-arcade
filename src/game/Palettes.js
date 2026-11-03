@@ -1,30 +1,35 @@
-// Retro Color Palettes with Arcade Purple Screen & Green Snake
+// Pixel-perfect Color Palette extracted from reference image
 
 export const PALETTES = {
   arcadeRetro: {
-    name: 'Arcade Purple & Green',
-    screenBg: '#2a1e45',
-    screenInner: '#24183d',
-    grid: 'rgba(147, 112, 219, 0.22)',
-    // Green Snake (as requested)
-    snakeHead: '#00e436',
-    snakeHeadShine: '#69ff7e',
-    snakeBody: '#159638',
-    snakeBodyBorder: '#0b6623',
+    name: 'Arcade Plum & Amber',
+    // Screen colors from reference image
+    screenBg: '#351d3d',
+    screenInner: '#391f44',
+    grid: 'rgba(92, 54, 102, 0.35)',
+    bezelBorder: '#28162e',
+    glassHighlight: 'rgba(255, 255, 255, 0.09)',
+
+    // Snake (Clean Arcade Green)
+    snakeHead: '#39e75f',
+    snakeHeadShine: '#85ff9e',
+    snakeBody: '#1ca03e',
+    snakeBodyBorder: '#0e5e22',
     snakeEye: '#ffffff',
-    snakePupil: '#111827',
-    // Food & Bonuses
-    food: '#ff3b30',
-    foodGlow: 'rgba(255, 59, 48, 0.45)',
-    goldenFood: '#ff9e1f',
-    goldenGlow: 'rgba(255, 158, 31, 0.65)',
-    particle: '#00e436',
-    // UI Accents
-    textOrange: '#ff9e1f',
-    textOrangeDark: '#d97706',
-    textWhite: '#f8fafc',
-    heartOrange: '#ff9e1f',
-    heartOrangeDark: '#d97706',
-    glassHighlight: 'rgba(255, 255, 255, 0.08)'
+    snakePupil: '#152118',
+
+    // Food (Apples & Bonus)
+    food: '#ff334b',
+    foodGlow: 'rgba(255, 51, 75, 0.4)',
+    goldenFood: '#fda415',
+    goldenGlow: 'rgba(253, 164, 21, 0.6)',
+
+    // UI Typography & Hearts (matching reference image)
+    textAmberTop: '#fda415',
+    textAmberBottom: '#fc7814',
+    textAmberShadow: '#7d3309',
+    textWhite: '#fff5ea',
+    heartOrangeTop: '#fda415',
+    heartOrangeBottom: '#fc7814'
   }
 };

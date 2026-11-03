@@ -19,27 +19,27 @@ export class Game {
     this.sfx = sfx;
     this.music = music;
 
-    // Grid configuration: 24x24 grid at 20px = 480x480
-    this.cols = 24;
-    this.rows = 24;
+    // 4:3 Arcade resolution: 560x420 (28 cols x 21 rows @ 20px)
+    this.cols = 28;
+    this.rows = 21;
     this.cellSize = 20;
 
-    // Game state & Theme
+    // Theme & State
     this.state = GAME_STATES.MENU;
     this.palette = PALETTES.arcadeRetro;
 
-    // Game entities
+    // Entities
     this.snake = new Snake(this.cols, this.rows);
     this.food = new FoodManager(this.cols, this.rows);
     this.particles = new ParticleSystem();
 
-    // Scoring & Lives (5 hearts matching reference image)
+    // Scoring & 5 Lives
     this.score = 0;
     this.highScore = parseInt(localStorage.getItem('pixel_snake_hiscore') || '123000', 10);
     this.lives = 5;
     this.maxLives = 5;
 
-    // Game Timing
+    // Timing
     this.lastTime = 0;
     this.tickAccumulator = 0;
     this.baseSpeedMs = 115;
@@ -49,8 +49,7 @@ export class Game {
     this.shakeIntensity = 0;
     this.shakeDecay = 0.9;
 
-    // Reference Menu State: "ARE YOU READY? YES ◀   NO"
-    // selectedChoice: 'YES' | 'NO'
+    // Menu Selection: 'YES' | 'NO'
     this.selectedChoice = 'YES';
 
     this.setupInputs();
@@ -83,7 +82,7 @@ export class Game {
       }
     });
 
-    // Touch & Click support on canvas
+    // Touch & Click on canvas
     this.canvas.addEventListener('click', (e) => {
       if (!this.synth.initialized) {
         this.synth.init();
@@ -97,9 +96,9 @@ export class Game {
         const clickX = (e.clientX - rect.left) * scaleX;
         const clickY = (e.clientY - rect.top) * scaleY;
 
-        // Click near YES / NO region
-        if (clickY >= 330 && clickY <= 400) {
-          if (clickX < 260) {
+        // Click YES / NO region
+        if (clickY >= 320 && clickY <= 380) {
+          if (clickX < 290) {
             this.selectedChoice = 'YES';
             this.sfx.coinInsert();
             this.startGame();
@@ -108,7 +107,7 @@ export class Game {
             this.sfx.menuMove();
           }
         } else {
-          // Click anywhere else on screen starts game
+          // Tap anywhere to start
           this.selectedChoice = 'YES';
           this.sfx.coinInsert();
           this.startGame();
@@ -140,7 +139,6 @@ export class Game {
         this.startGame();
       } else {
         this.sfx.menuConfirm();
-        // Toggle back to YES after playful beep
         setTimeout(() => { this.selectedChoice = 'YES'; }, 400);
       }
     }
@@ -242,7 +240,6 @@ export class Game {
       this.sfx.eat();
       this.food.spawnApple(this.snake.body);
 
-      // Accelerate slightly
       this.currentSpeedMs = Math.max(65, this.baseSpeedMs - (this.snake.body.length * 1.5));
       this.music.setGameIntensity(this.score);
 
@@ -276,7 +273,6 @@ export class Game {
     this.triggerScreenShake(12);
 
     if (this.lives > 0) {
-      // Lose life and respawn at center
       this.sfx.gameOver();
       for (const seg of this.snake.body) {
         const sx = seg.x * this.cellSize + this.cellSize / 2;
@@ -285,7 +281,6 @@ export class Game {
       }
       this.snake.reset();
     } else {
-      // Game Over
       this.state = GAME_STATES.GAME_OVER;
       this.sfx.gameOver();
       this.music.stop();
@@ -307,21 +302,21 @@ export class Game {
     const { ctx, canvas } = this;
     ctx.save();
 
-    // 1. Draw Arcade Purple Screen Background
+    // 1. Draw Arcade Plum Screen Background (#351d3d)
     ctx.fillStyle = this.palette.screenBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Screen Shake offset
+    // Screen Shake
     if (this.shakeIntensity > 0) {
       const sx = (Math.random() - 0.5) * this.shakeIntensity * 2;
       const sy = (Math.random() - 0.5) * this.shakeIntensity * 2;
       ctx.translate(sx, sy);
     }
 
-    // 2. Subtle Grid Lines (Purple tint)
+    // 2. Subtle Grid Lines (Plum tint)
     this.drawGrid();
 
-    // 3. Draw Game Objects if Playing
+    // 3. Draw Game Entities
     if (this.state === GAME_STATES.PLAYING || this.state === GAME_STATES.PAUSED) {
       this.food.draw(ctx, this.cellSize, this.palette);
       this.snake.draw(ctx, this.cellSize, this.palette);
@@ -330,7 +325,7 @@ export class Game {
     // 4. Particles
     this.particles.draw(ctx);
 
-    // 5. Draw UI & Menus
+    // 5. Menus and HUD
     if (this.state === GAME_STATES.MENU) {
       this.renderReferenceMenu();
     } else if (this.state === GAME_STATES.PLAYING) {
@@ -342,7 +337,7 @@ export class Game {
       this.renderGameOver();
     }
 
-    // 6. Draw Specular Curved Glass Highlight Reflections (like reference image)
+    // 6. Specular curved glass reflections
     this.drawGlassReflections();
 
     ctx.restore();
@@ -369,26 +364,24 @@ export class Game {
     ctx.restore();
   }
 
-  // Draw 5 Pixel Hearts at top right
+  // Draw 5 Pixel Hearts in warm amber/orange (#fda415 / #fc7814)
   drawPixelHearts(startX, startY, count) {
     const { ctx, palette } = this;
-    const heartSpacing = 24;
+    const heartSpacing = 26;
 
     for (let i = 0; i < 5; i++) {
       const hx = startX + (i * heartSpacing);
       const isFilled = i < count;
 
       ctx.save();
-      ctx.fillStyle = isFilled ? palette.heartOrange : '#3f2d59';
-
-      // Pixel Art Heart Matrix (7 columns x 6 rows)
+      const px = 2.6;
+      // Heart matrix:
       //  .XX.XX.
       //  XXXXXXX
       //  XXXXXXX
       //  .XXXXX.
       //  ..XXX..
       //  ...X...
-      const px = 2.4;
       const rows = [
         [0,1,1,0,1,1,0],
         [1,1,1,1,1,1,1],
@@ -401,59 +394,65 @@ export class Game {
       for (let r = 0; r < rows.length; r++) {
         for (let c = 0; c < rows[r].length; c++) {
           if (rows[r][c] === 1) {
+            if (!isFilled) {
+              ctx.fillStyle = '#482c52'; // Depleted heart
+            } else {
+              // Top half brighter amber, lower half warm orange
+              ctx.fillStyle = r < 3 ? palette.heartOrangeTop : palette.heartOrangeBottom;
+            }
             ctx.fillRect(hx + (c * px), startY + (r * px), px, px);
           }
         }
       }
-
       ctx.restore();
     }
   }
 
-  // The Exact Menu from the User's Image
+  // Exact reproduction of User's Image
   renderReferenceMenu() {
     const { ctx, palette, canvas } = this;
     ctx.save();
 
     // Top-Left: HI-SCORE
-    ctx.font = '13px "Press Start 2P", monospace';
-    ctx.fillStyle = palette.textWhite;
-    ctx.fillText('HI-SCORE', 26, 42);
-
-    ctx.fillStyle = palette.textOrange;
-    const formattedScore = this.highScore.toString().padStart(6, '0');
-    ctx.fillText(formattedScore, 26, 68);
-
-    // Top-Right: 5 Orange Pixel Hearts
-    this.drawPixelHearts(335, 36, 5);
-
-    // Center Big Orange Title: START
-    ctx.textAlign = 'center';
-
-    // 3D Drop Shadow for START
-    ctx.font = '54px "Press Start 2P", monospace';
-    ctx.fillStyle = palette.textOrangeDark;
-    ctx.fillText('START', canvas.width / 2, 224);
-
-    // Front Orange Body
-    ctx.fillStyle = palette.textOrange;
-    ctx.fillText('START', canvas.width / 2, 220);
-
-    // Golden Top Highlight
-    ctx.fillStyle = '#ffcf70';
-    ctx.font = '54px "Press Start 2P", monospace';
-    // Draw top highlight with clip or thin overlay
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 165, canvas.width, 24);
-    ctx.clip();
-    ctx.fillText('START', canvas.width / 2, 220);
-    ctx.restore();
-
-    // Subtitle: ARE YOU READY?
     ctx.font = '14px "Press Start 2P", monospace';
     ctx.fillStyle = palette.textWhite;
-    ctx.fillText('ARE YOU READY?', canvas.width / 2, 310);
+    ctx.fillText('HI-SCORE', 34, 46);
+
+    ctx.fillStyle = palette.textAmberTop;
+    const formattedScore = this.highScore.toString().padStart(6, '0');
+    ctx.fillText(formattedScore, 34, 72);
+
+    // Top-Right: 5 Orange Pixel Hearts
+    this.drawPixelHearts(380, 36, 5);
+
+    // Center Big Orange Title: START (with top-to-bottom amber shading & dark outline)
+    ctx.textAlign = 'center';
+
+    const centerX = canvas.width / 2;
+    const centerY = 210;
+
+    // 1. Dark bottom outline / shadow
+    ctx.font = '54px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textAmberShadow;
+    ctx.fillText('START', centerX, centerY + 4);
+
+    // 2. Base warm orange body
+    ctx.fillStyle = palette.textAmberBottom;
+    ctx.fillText('START', centerX, centerY);
+
+    // 3. Top golden highlight (clipped to upper half of letters)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, centerY - 60, canvas.width, 28);
+    ctx.clip();
+    ctx.fillStyle = palette.textAmberTop;
+    ctx.fillText('START', centerX, centerY);
+    ctx.restore();
+
+    // Subtitle: ARE YOU READY? in white/cream
+    ctx.font = '14px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText('ARE YOU READY?', centerX, 295);
 
     // Options: YES ◀       NO
     ctx.font = '18px "Press Start 2P", monospace';
@@ -461,16 +460,15 @@ export class Game {
     // YES
     ctx.textAlign = 'right';
     ctx.fillStyle = palette.textWhite;
-    ctx.fillText('YES', 210, 368);
+    ctx.fillText('YES', 230, 354);
 
-    // Triangle Cursor pointing to left
+    // Triangle Cursor ◀
     if (this.selectedChoice === 'YES') {
-      ctx.fillStyle = palette.textOrange;
+      ctx.fillStyle = palette.textAmberTop;
       ctx.beginPath();
-      // Triangle ◀
-      ctx.moveTo(226, 358);
-      ctx.lineTo(240, 350);
-      ctx.lineTo(240, 366);
+      ctx.moveTo(244, 346);
+      ctx.lineTo(258, 338);
+      ctx.lineTo(258, 354);
       ctx.closePath();
       ctx.fill();
     }
@@ -478,15 +476,14 @@ export class Game {
     // NO
     ctx.textAlign = 'left';
     ctx.fillStyle = palette.textWhite;
-    ctx.fillText('NO', 290, 368);
+    ctx.fillText('NO', 320, 354);
 
     if (this.selectedChoice === 'NO') {
-      ctx.fillStyle = palette.textOrange;
+      ctx.fillStyle = palette.textAmberTop;
       ctx.beginPath();
-      // Triangle ◀
-      ctx.moveTo(336, 358);
-      ctx.lineTo(350, 350);
-      ctx.lineTo(350, 366);
+      ctx.moveTo(366, 346);
+      ctx.lineTo(380, 338);
+      ctx.lineTo(380, 354);
       ctx.closePath();
       ctx.fill();
     }
@@ -498,82 +495,82 @@ export class Game {
     const { ctx, palette } = this;
     ctx.save();
 
-    // Top-Left: SCORE & HI-SCORE
+    // Top-Left: SCORE
     ctx.font = '12px "Press Start 2P", monospace';
     ctx.fillStyle = palette.textWhite;
-    ctx.fillText('SCORE', 26, 36);
+    ctx.fillText('SCORE', 34, 40);
 
-    ctx.fillStyle = palette.textOrange;
-    ctx.fillText(this.score.toString().padStart(6, '0'), 26, 58);
+    ctx.fillStyle = palette.textAmberTop;
+    ctx.fillText(this.score.toString().padStart(6, '0'), 34, 62);
 
-    // Top-Right: Remaining Lives / Hearts
-    this.drawPixelHearts(335, 30, this.lives);
+    // Top-Right: Remaining Lives
+    this.drawPixelHearts(380, 32, this.lives);
 
     ctx.restore();
   }
 
   renderPauseOverlay() {
-    const { ctx, canvas } = this;
+    const { ctx, canvas, palette } = this;
     ctx.save();
-    ctx.fillStyle = 'rgba(26, 18, 45, 0.75)';
+    ctx.fillStyle = 'rgba(40, 22, 46, 0.78)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.textAlign = 'center';
-    ctx.font = '22px "Press Start 2P", monospace';
-    ctx.fillStyle = '#ff9e1f';
+    ctx.font = '24px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textAmberTop;
     ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
 
-    ctx.font = '10px "Press Start 2P", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('PRESS [P] OR [ESC] TO RESUME', canvas.width / 2, canvas.height / 2 + 35);
+    ctx.font = '11px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText('PRESS [P] OR [ESC] TO RESUME', canvas.width / 2, canvas.height / 2 + 36);
     ctx.restore();
   }
 
   renderGameOver() {
     const { ctx, canvas, palette } = this;
     ctx.save();
-    ctx.fillStyle = 'rgba(24, 16, 42, 0.85)';
+    ctx.fillStyle = 'rgba(38, 20, 44, 0.88)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.textAlign = 'center';
     ctx.font = '24px "Press Start 2P", monospace';
-    ctx.fillStyle = '#ff3b30';
-    ctx.fillText('GAME OVER', canvas.width / 2, 180);
+    ctx.fillStyle = '#ff334b';
+    ctx.fillText('GAME OVER', canvas.width / 2, 170);
 
     ctx.font = '13px "Press Start 2P", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(`SCORE: ${this.score}`, canvas.width / 2, 230);
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText(`SCORE: ${this.score}`, canvas.width / 2, 220);
 
-    ctx.fillStyle = palette.textOrange;
-    ctx.fillText(`BEST: ${this.highScore}`, canvas.width / 2, 260);
+    ctx.fillStyle = palette.textAmberTop;
+    ctx.fillText(`BEST: ${this.highScore}`, canvas.width / 2, 250);
 
     const blink = Math.floor(Date.now() / 400) % 2 === 0;
     if (blink) {
       ctx.fillStyle = palette.textWhite;
-      ctx.fillText('PRESS [ENTER] TO RETRY', canvas.width / 2, 330);
+      ctx.fillText('PRESS [ENTER] TO RETRY', canvas.width / 2, 315);
     }
     ctx.restore();
   }
 
-  // Draw the glossy curved reflection lines on the monitor glass (as in reference)
+  // Curved glass shine reflection matching reference image
   drawGlassReflections() {
     const { ctx, canvas } = this;
     ctx.save();
 
-    // Left curved glossy reflection
+    // Top-left curved highlight
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 14;
+    ctx.lineWidth = 16;
     ctx.beginPath();
-    ctx.moveTo(35, 160);
-    ctx.quadraticCurveTo(38, 70, 110, 40);
+    ctx.moveTo(35, 140);
+    ctx.quadraticCurveTo(38, 60, 120, 36);
     ctx.stroke();
 
-    // Right subtle reflection
+    // Right-side reflection
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 12;
     ctx.beginPath();
-    ctx.moveTo(canvas.width - 35, 170);
-    ctx.quadraticCurveTo(canvas.width - 38, 80, canvas.width - 100, 45);
+    ctx.moveTo(canvas.width - 35, 150);
+    ctx.quadraticCurveTo(canvas.width - 38, 70, canvas.width - 110, 42);
     ctx.stroke();
 
     ctx.restore();
