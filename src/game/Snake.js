@@ -1,4 +1,4 @@
-// Snake Grid Entity with Input Buffer & Pixel Rendering
+// Snake Grid Entity with Green Pixel Styling & Direction Buffer
 
 export class Snake {
   constructor(gridCols, gridRows) {
@@ -24,7 +24,6 @@ export class Snake {
   }
 
   queueDirection(x, y) {
-    // Avoid queuing duplicate commands
     const lastDir = this.inputQueue.length > 0 
       ? this.inputQueue[this.inputQueue.length - 1] 
       : this.dir;
@@ -49,13 +48,12 @@ export class Snake {
       y: head.y + this.dir.y
     };
 
-    // Insert new head
     this.body.unshift(newHead);
 
     if (this.growPending > 0) {
       this.growPending--;
     } else {
-      this.body.pop(); // Remove tail if not growing
+      this.body.pop();
     }
 
     return newHead;
@@ -86,48 +84,73 @@ export class Snake {
   }
 
   draw(ctx, cellSize, palette) {
-    // Draw body segments
     for (let i = this.body.length - 1; i >= 0; i--) {
       const seg = this.body[i];
       const sx = seg.x * cellSize;
       const sy = seg.y * cellSize;
 
       if (i === 0) {
-        // Snake Head
+        // Snake Head: Vibrant Green Pixel Box
         ctx.save();
         ctx.fillStyle = palette.snakeHead;
         ctx.fillRect(sx + 1, sy + 1, cellSize - 2, cellSize - 2);
 
-        // Eyes facing current direction
-        ctx.fillStyle = palette.snakeEye;
-        const eyeSize = 3;
-        let eye1X, eye1Y, eye2X, eye2Y;
+        // Top-left pixel highlight on head
+        ctx.fillStyle = palette.snakeHeadShine;
+        ctx.fillRect(sx + 2, sy + 2, 4, 4);
 
-        if (this.dir.x === 1) { // Right
-          eye1X = sx + cellSize - 5; eye1Y = sy + 3;
-          eye2X = sx + cellSize - 5; eye2Y = sy + cellSize - 6;
-        } else if (this.dir.x === -1) { // Left
-          eye1X = sx + 2; eye1Y = sy + 3;
-          eye2X = sx + 2; eye2Y = sy + cellSize - 6;
-        } else if (this.dir.y === 1) { // Down
-          eye1X = sx + 3; eye1Y = sy + cellSize - 5;
-          eye2X = sx + cellSize - 6; eye2Y = sy + cellSize - 5;
-        } else { // Up
-          eye1X = sx + 3; eye1Y = sy + 2;
-          eye2X = sx + cellSize - 6; eye2Y = sy + 2;
+        // Eyes with pupils facing the direction
+        ctx.fillStyle = palette.snakeEye;
+        const eyeW = 4;
+        const eyeH = 4;
+        let e1x, e1y, e2x, e2y;
+        let p1x, p1y, p2x, p2y;
+
+        if (this.dir.x === 1) { // Facing Right
+          e1x = sx + cellSize - 6; e1y = sy + 3;
+          e2x = sx + cellSize - 6; e2y = sy + cellSize - 7;
+          p1x = e1x + 2; p1y = e1y + 1;
+          p2x = e2x + 2; p2y = e2y + 1;
+        } else if (this.dir.x === -1) { // Facing Left
+          e1x = sx + 2; e1y = sy + 3;
+          e2x = sx + 2; e2y = sy + cellSize - 7;
+          p1x = e1x; p1y = e1y + 1;
+          p2x = e2x; p2y = e2y + 1;
+        } else if (this.dir.y === 1) { // Facing Down
+          e1x = sx + 3; e1y = sy + cellSize - 6;
+          e2x = sx + cellSize - 7; e2y = sy + cellSize - 6;
+          p1x = e1x + 1; p1y = e1y + 2;
+          p2x = e2x + 1; p2y = e2y + 2;
+        } else { // Facing Up
+          e1x = sx + 3; e1y = sy + 2;
+          e2x = sx + cellSize - 7; e2y = sy + 2;
+          p1x = e1x + 1; p1y = e1y;
+          p2x = e2x + 1; p2y = e2y;
         }
 
-        ctx.fillRect(eye1X, eye1Y, eyeSize, eyeSize);
-        ctx.fillRect(eye2X, eye2Y, eyeSize, eyeSize);
+        ctx.fillRect(e1x, e1y, eyeW, eyeH);
+        ctx.fillRect(e2x, e2y, eyeW, eyeH);
+
+        // Pupils
+        ctx.fillStyle = palette.snakePupil;
+        ctx.fillRect(p1x, p1y, 2, 2);
+        ctx.fillRect(p2x, p2y, 2, 2);
+
         ctx.restore();
       } else {
-        // Body segment (slightly smaller for pixel segment look)
+        // Snake Body Segment: Rich Green with darker pixel border
         ctx.save();
-        // Subtle color gradient down the tail
-        const alpha = Math.max(0.65, 1 - (i / this.body.length) * 0.35);
-        ctx.globalAlpha = alpha;
+        ctx.fillStyle = palette.snakeBodyBorder;
+        ctx.fillRect(sx + 1, sy + 1, cellSize - 2, cellSize - 2);
+
         ctx.fillStyle = palette.snakeBody;
         ctx.fillRect(sx + 2, sy + 2, cellSize - 4, cellSize - 4);
+
+        // Subtle lighter scale in the center
+        if (cellSize >= 16) {
+          ctx.fillStyle = palette.snakeHead;
+          ctx.fillRect(sx + 5, sy + 5, cellSize - 10, cellSize - 10);
+        }
         ctx.restore();
       }
     }

@@ -1,4 +1,4 @@
-// Main Arcade Game State Machine & Controller
+// Main Arcade Game Controller matching reference design
 import { Snake } from './Snake.js';
 import { FoodManager } from './Food.js';
 import { ParticleSystem } from './Particles.js';
@@ -8,8 +8,7 @@ export const GAME_STATES = {
   MENU: 'MENU',
   PLAYING: 'PLAYING',
   PAUSED: 'PAUSED',
-  GAME_OVER: 'GAME_OVER',
-  HIGH_SCORES: 'HIGH_SCORES'
+  GAME_OVER: 'GAME_OVER'
 };
 
 export class Game {
@@ -20,84 +19,46 @@ export class Game {
     this.sfx = sfx;
     this.music = music;
 
-    // Grid configuration (24x24 grid at 20px cell size = 480x480 native resolution)
+    // Grid configuration: 24x24 grid at 20px = 480x480
     this.cols = 24;
     this.rows = 24;
     this.cellSize = 20;
 
-    // Game state
+    // Game state & Theme
     this.state = GAME_STATES.MENU;
-    this.currentPaletteKey = 'cyber';
-    this.palette = PALETTES[this.currentPaletteKey];
-    this.crtEnabled = true;
+    this.palette = PALETTES.arcadeRetro;
 
-    // Game objects
+    // Game entities
     this.snake = new Snake(this.cols, this.rows);
     this.food = new FoodManager(this.cols, this.rows);
     this.particles = new ParticleSystem();
 
-    // Scoring & Progression
+    // Scoring & Lives (5 hearts matching reference image)
     this.score = 0;
-    this.highScore = parseInt(localStorage.getItem('pixel_snake_hiscore') || '0', 10);
-    this.combo = 0;
-    this.comboTimer = 0;
+    this.highScore = parseInt(localStorage.getItem('pixel_snake_hiscore') || '123000', 10);
+    this.lives = 5;
+    this.maxLives = 5;
 
-    // Game Loop Timing (Grid tick vs Render loop)
+    // Game Timing
     this.lastTime = 0;
     this.tickAccumulator = 0;
-    this.baseSpeedMs = 120; // 120ms per grid movement
+    this.baseSpeedMs = 115;
     this.currentSpeedMs = this.baseSpeedMs;
 
-    // Screen Shake effect
+    // Screen Shake
     this.shakeIntensity = 0;
     this.shakeDecay = 0.9;
 
-    // Retro Arcade Menu
-    this.menuSelectedIndex = 0;
-    this.menuOptions = [
-      { id: 'start', label: 'INSERT COIN / START GAME' },
-      { id: 'palette', label: 'COLOR PALETTE: ' },
-      { id: 'crt', label: 'CRT FILTER: ' },
-      { id: 'hiscores', label: 'HALL OF FAME (SCORES)' },
-      { id: 'audio', label: 'PROCEDURAL AUDIO: ' }
-    ];
+    // Reference Menu State: "ARE YOU READY? YES ◀   NO"
+    // selectedChoice: 'YES' | 'NO'
+    this.selectedChoice = 'YES';
 
-    // High Scores list
-    this.highScores = this.loadHighScores();
-
-    // Setup input listeners
     this.setupInputs();
-  }
-
-  loadHighScores() {
-    const raw = localStorage.getItem('pixel_snake_leaderboard');
-    if (raw) {
-      try { return JSON.parse(raw); } catch (e) {}
-    }
-    return [
-      { tag: 'JLP', score: 1500 },
-      { tag: 'NEO', score: 1000 },
-      { tag: 'CYB', score: 750 },
-      { tag: 'SNK', score: 500 },
-      { tag: 'ARC', score: 250 }
-    ];
-  }
-
-  saveHighScore(score) {
-    if (score <= 0) return;
-    this.highScores.push({ tag: 'YOU', score });
-    this.highScores.sort((a, b) => b.score - a.score);
-    this.highScores = this.highScores.slice(0, 5);
-    localStorage.setItem('pixel_snake_leaderboard', JSON.stringify(this.highScores));
-    if (score > this.highScore) {
-      this.highScore = score;
-      localStorage.setItem('pixel_snake_hiscore', this.highScore.toString());
-    }
   }
 
   setupInputs() {
     window.addEventListener('keydown', (e) => {
-      // Audio unlock on first key
+      // Audio unlock on user interaction
       if (!this.synth.initialized) {
         this.synth.init();
         this.music.start('menu');
@@ -119,15 +80,10 @@ export class Game {
           this.state = GAME_STATES.MENU;
           this.music.setMode('menu');
         }
-      } else if (this.state === GAME_STATES.HIGH_SCORES) {
-        if (e.code === 'Enter' || e.code === 'Escape' || e.code === 'Space') {
-          this.sfx.menuConfirm();
-          this.state = GAME_STATES.MENU;
-        }
       }
     });
 
-    // Mouse / Touch tap on canvas for instant arcade interaction
+    // Touch & Click support on canvas
     this.canvas.addEventListener('click', (e) => {
       if (!this.synth.initialized) {
         this.synth.init();
@@ -136,90 +92,57 @@ export class Game {
 
       if (this.state === GAME_STATES.MENU) {
         const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
+        const clickX = (e.clientX - rect.left) * scaleX;
         const clickY = (e.clientY - rect.top) * scaleY;
 
-        // Check if clicked in the menu options region (Y: 190 to 360)
-        const startY = 210;
-        const lineHeight = 32;
-        let clickedOption = false;
-
-        this.menuOptions.forEach((opt, idx) => {
-          const itemY = startY + (idx * lineHeight);
-          if (clickY >= itemY - 18 && clickY <= itemY + 12) {
-            this.menuSelectedIndex = idx;
-            this.executeMenuSelection();
-            clickedOption = true;
+        // Click near YES / NO region
+        if (clickY >= 330 && clickY <= 400) {
+          if (clickX < 260) {
+            this.selectedChoice = 'YES';
+            this.sfx.coinInsert();
+            this.startGame();
+          } else {
+            this.selectedChoice = 'NO';
+            this.sfx.menuMove();
           }
-        });
-
-        if (!clickedOption) {
-          // If clicked anywhere else, start the game like INSERT COIN
+        } else {
+          // Click anywhere else on screen starts game
+          this.selectedChoice = 'YES';
           this.sfx.coinInsert();
           this.startGame();
         }
       } else if (this.state === GAME_STATES.GAME_OVER) {
         this.sfx.coinInsert();
         this.startGame();
-      } else if (this.state === GAME_STATES.HIGH_SCORES) {
-        this.sfx.menuConfirm();
-        this.state = GAME_STATES.MENU;
       }
     });
   }
 
   handleMenuInput(e) {
-    if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
       e.preventDefault();
-      this.menuSelectedIndex = (this.menuSelectedIndex - 1 + this.menuOptions.length) % this.menuOptions.length;
-      this.sfx.menuMove();
-    } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-      e.preventDefault();
-      this.menuSelectedIndex = (this.menuSelectedIndex + 1) % this.menuOptions.length;
-      this.sfx.menuMove();
-    } else if (e.code === 'Enter' || e.code === 'Space') {
-      e.preventDefault();
-      this.executeMenuSelection();
+      if (this.selectedChoice !== 'YES') {
+        this.selectedChoice = 'YES';
+        this.sfx.menuMove();
+      }
     } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
       e.preventDefault();
-      if (this.menuOptions[this.menuSelectedIndex].id !== 'start' && this.menuOptions[this.menuSelectedIndex].id !== 'hiscores') {
-        this.executeMenuSelection(false);
-      } else {
-        this.executeMenuSelection();
+      if (this.selectedChoice !== 'NO') {
+        this.selectedChoice = 'NO';
+        this.sfx.menuMove();
       }
-    } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+    } else if (e.code === 'Enter' || e.code === 'Space') {
       e.preventDefault();
-      if (this.menuOptions[this.menuSelectedIndex].id !== 'start' && this.menuOptions[this.menuSelectedIndex].id !== 'hiscores') {
-        this.executeMenuSelection(true);
+      if (this.selectedChoice === 'YES') {
+        this.sfx.coinInsert();
+        this.startGame();
+      } else {
+        this.sfx.menuConfirm();
+        // Toggle back to YES after playful beep
+        setTimeout(() => { this.selectedChoice = 'YES'; }, 400);
       }
-    }
-  }
-
-  executeMenuSelection(reverse = false) {
-    const selected = this.menuOptions[this.menuSelectedIndex];
-    if (selected.id === 'start') {
-      this.sfx.coinInsert();
-      this.startGame();
-    } else if (selected.id === 'palette') {
-      const keys = Object.keys(PALETTES);
-      const currIdx = keys.indexOf(this.currentPaletteKey);
-      const nextIdx = reverse 
-        ? (currIdx - 1 + keys.length) % keys.length 
-        : (currIdx + 1) % keys.length;
-      this.currentPaletteKey = keys[nextIdx];
-      this.palette = PALETTES[this.currentPaletteKey];
-      this.sfx.menuConfirm();
-    } else if (selected.id === 'crt') {
-      this.crtEnabled = !this.crtEnabled;
-      const crtEl = document.getElementById('crt-overlay');
-      if (crtEl) crtEl.style.display = this.crtEnabled ? 'block' : 'none';
-      this.sfx.menuConfirm();
-    } else if (selected.id === 'hiscores') {
-      this.sfx.menuConfirm();
-      this.state = GAME_STATES.HIGH_SCORES;
-    } else if (selected.id === 'audio') {
-      this.synth.toggleMute();
-      this.sfx.menuConfirm();
     }
   }
 
@@ -243,8 +166,7 @@ export class Game {
 
   startGame() {
     this.score = 0;
-    this.combo = 0;
-    this.comboTimer = 0;
+    this.lives = this.maxLives;
     this.currentSpeedMs = this.baseSpeedMs;
     this.snake.reset();
     this.food.applesEatenCount = 0;
@@ -268,17 +190,15 @@ export class Game {
     }
   }
 
-  triggerScreenShake(amount = 6) {
+  triggerScreenShake(amount = 7) {
     this.shakeIntensity = amount;
   }
 
-  // Called at 60fps
   update(timestamp) {
     if (!this.lastTime) this.lastTime = timestamp;
     const deltaMs = Math.min(timestamp - this.lastTime, 100);
     this.lastTime = timestamp;
 
-    // Decay screen shake
     if (this.shakeIntensity > 0.05) {
       this.shakeIntensity *= this.shakeDecay;
     } else {
@@ -290,15 +210,6 @@ export class Game {
     if (this.state === GAME_STATES.PLAYING) {
       this.food.update(deltaMs);
 
-      // Combo timer decay
-      if (this.combo > 0) {
-        this.comboTimer -= deltaMs;
-        if (this.comboTimer <= 0) {
-          this.combo = 0;
-        }
-      }
-
-      // Grid logic tick
       this.tickAccumulator += deltaMs;
       while (this.tickAccumulator >= this.currentSpeedMs) {
         this.stepGame();
@@ -311,100 +222,117 @@ export class Game {
     const newHead = this.snake.update();
     this.sfx.step();
 
-    // 1. Check Wall Collision
-    if (this.snake.checkWallCollision()) {
-      this.triggerGameOver();
+    // Check Wall or Self Collision
+    const hitWall = this.snake.checkWallCollision();
+    const hitSelf = this.snake.checkSelfCollision();
+
+    if (hitWall || hitSelf) {
+      this.handlePlayerHit();
       return;
     }
 
-    // 2. Check Self Collision
-    if (this.snake.checkSelfCollision()) {
-      this.triggerGameOver();
-      return;
-    }
-
-    // 3. Check Normal Apple Collision
+    // Normal Apple
     if (newHead.x === this.food.apple.x && newHead.y === this.food.apple.y) {
       this.snake.grow(1);
-      this.combo++;
-      this.comboTimer = 4000; // 4 seconds combo window
-      const points = 10 * Math.min(this.combo, 5);
-      this.score += points;
-
-      // Particle explosion + screen shake
+      this.score += 100;
       const px = this.food.apple.x * this.cellSize + this.cellSize / 2;
       const py = this.food.apple.y * this.cellSize + this.cellSize / 2;
-      this.particles.burst(px, py, this.palette.food, 16);
-      this.triggerScreenShake(3);
-
+      this.particles.burst(px, py, this.palette.snakeHead, 16);
+      this.triggerScreenShake(4);
       this.sfx.eat();
       this.food.spawnApple(this.snake.body);
 
-      // Accelerate speed slightly
+      // Accelerate slightly
       this.currentSpeedMs = Math.max(65, this.baseSpeedMs - (this.snake.body.length * 1.5));
       this.music.setGameIntensity(this.score);
+
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+        localStorage.setItem('pixel_snake_hiscore', this.highScore.toString());
+      }
     }
 
-    // 4. Check Golden Apple Collision
+    // Golden Bonus Apple
     if (this.food.golden && newHead.x === this.food.golden.x && newHead.y === this.food.golden.y) {
       this.snake.grow(2);
-      this.score += 50 * (this.combo > 0 ? this.combo : 1);
+      this.score += 500;
       const gx = this.food.golden.x * this.cellSize + this.cellSize / 2;
       const gy = this.food.golden.y * this.cellSize + this.cellSize / 2;
       this.particles.burst(gx, gy, this.palette.goldenFood, 24, 6);
-      this.triggerScreenShake(7);
+      this.triggerScreenShake(8);
       this.sfx.eatGolden();
       this.food.golden = null;
       this.music.setGameIntensity(this.score);
+
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+        localStorage.setItem('pixel_snake_hiscore', this.highScore.toString());
+      }
     }
   }
 
-  triggerGameOver() {
-    this.state = GAME_STATES.GAME_OVER;
-    this.sfx.gameOver();
-    this.music.stop();
+  handlePlayerHit() {
+    this.lives--;
     this.triggerScreenShake(12);
 
-    // Explode snake body into particles
-    for (const seg of this.snake.body) {
-      const sx = seg.x * this.cellSize + this.cellSize / 2;
-      const sy = seg.y * this.cellSize + this.cellSize / 2;
-      this.particles.burst(sx, sy, this.palette.snakeHead, 6, 3);
-    }
+    if (this.lives > 0) {
+      // Lose life and respawn at center
+      this.sfx.gameOver();
+      for (const seg of this.snake.body) {
+        const sx = seg.x * this.cellSize + this.cellSize / 2;
+        const sy = seg.y * this.cellSize + this.cellSize / 2;
+        this.particles.burst(sx, sy, this.palette.snakeHead, 6, 3);
+      }
+      this.snake.reset();
+    } else {
+      // Game Over
+      this.state = GAME_STATES.GAME_OVER;
+      this.sfx.gameOver();
+      this.music.stop();
 
-    this.saveHighScore(this.score);
+      for (const seg of this.snake.body) {
+        const sx = seg.x * this.cellSize + this.cellSize / 2;
+        const sy = seg.y * this.cellSize + this.cellSize / 2;
+        this.particles.burst(sx, sy, this.palette.snakeHead, 10, 4);
+      }
+
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+        localStorage.setItem('pixel_snake_hiscore', this.highScore.toString());
+      }
+    }
   }
 
   render() {
     const { ctx, canvas } = this;
     ctx.save();
 
-    // Clear background
-    ctx.fillStyle = this.palette.bg;
+    // 1. Draw Arcade Purple Screen Background
+    ctx.fillStyle = this.palette.screenBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Apply Screen Shake
+    // Screen Shake offset
     if (this.shakeIntensity > 0) {
-      const shakeX = (Math.random() - 0.5) * this.shakeIntensity * 2;
-      const shakeY = (Math.random() - 0.5) * this.shakeIntensity * 2;
-      ctx.translate(shakeX, shakeY);
+      const sx = (Math.random() - 0.5) * this.shakeIntensity * 2;
+      const sy = (Math.random() - 0.5) * this.shakeIntensity * 2;
+      ctx.translate(sx, sy);
     }
 
-    // Draw Subtle Grid
+    // 2. Subtle Grid Lines (Purple tint)
     this.drawGrid();
 
-    // Draw Game Entities
+    // 3. Draw Game Objects if Playing
     if (this.state === GAME_STATES.PLAYING || this.state === GAME_STATES.PAUSED) {
       this.food.draw(ctx, this.cellSize, this.palette);
       this.snake.draw(ctx, this.cellSize, this.palette);
     }
 
-    // Particles render in all states
+    // 4. Particles
     this.particles.draw(ctx);
 
-    // Draw HUD / Overlays according to State
+    // 5. Draw UI & Menus
     if (this.state === GAME_STATES.MENU) {
-      this.renderArcadeMenu();
+      this.renderReferenceMenu();
     } else if (this.state === GAME_STATES.PLAYING) {
       this.renderHUD();
     } else if (this.state === GAME_STATES.PAUSED) {
@@ -412,9 +340,10 @@ export class Game {
       this.renderPauseOverlay();
     } else if (this.state === GAME_STATES.GAME_OVER) {
       this.renderGameOver();
-    } else if (this.state === GAME_STATES.HIGH_SCORES) {
-      this.renderHighScores();
     }
+
+    // 6. Draw Specular Curved Glass Highlight Reflections (like reference image)
+    this.drawGlassReflections();
 
     ctx.restore();
   }
@@ -440,88 +369,145 @@ export class Game {
     ctx.restore();
   }
 
-  renderHUD() {
+  // Draw 5 Pixel Hearts at top right
+  drawPixelHearts(startX, startY, count) {
     const { ctx, palette } = this;
+    const heartSpacing = 24;
+
+    for (let i = 0; i < 5; i++) {
+      const hx = startX + (i * heartSpacing);
+      const isFilled = i < count;
+
+      ctx.save();
+      ctx.fillStyle = isFilled ? palette.heartOrange : '#3f2d59';
+
+      // Pixel Art Heart Matrix (7 columns x 6 rows)
+      //  .XX.XX.
+      //  XXXXXXX
+      //  XXXXXXX
+      //  .XXXXX.
+      //  ..XXX..
+      //  ...X...
+      const px = 2.4;
+      const rows = [
+        [0,1,1,0,1,1,0],
+        [1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1],
+        [0,1,1,1,1,1,0],
+        [0,0,1,1,1,0,0],
+        [0,0,0,1,0,0,0]
+      ];
+
+      for (let r = 0; r < rows.length; r++) {
+        for (let c = 0; c < rows[r].length; c++) {
+          if (rows[r][c] === 1) {
+            ctx.fillRect(hx + (c * px), startY + (r * px), px, px);
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+  }
+
+  // The Exact Menu from the User's Image
+  renderReferenceMenu() {
+    const { ctx, palette, canvas } = this;
     ctx.save();
-    ctx.font = '12px "Press Start 2P", monospace';
-    ctx.fillStyle = palette.textAccent;
 
-    // Score left
-    ctx.fillText(`SCORE: ${this.score}`, 16, 24);
+    // Top-Left: HI-SCORE
+    ctx.font = '13px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText('HI-SCORE', 26, 42);
 
-    // HiScore right
-    const hiText = `HI: ${Math.max(this.score, this.highScore)}`;
-    ctx.fillText(hiText, 480 - 16 - ctx.measureText(hiText).width, 24);
+    ctx.fillStyle = palette.textOrange;
+    const formattedScore = this.highScore.toString().padStart(6, '0');
+    ctx.fillText(formattedScore, 26, 68);
 
-    // Combo multiplier
-    if (this.combo > 1) {
-      ctx.fillStyle = palette.goldenFood;
-      ctx.fillText(`${this.combo}X COMBO!`, 16, 44);
+    // Top-Right: 5 Orange Pixel Hearts
+    this.drawPixelHearts(335, 36, 5);
+
+    // Center Big Orange Title: START
+    ctx.textAlign = 'center';
+
+    // 3D Drop Shadow for START
+    ctx.font = '54px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textOrangeDark;
+    ctx.fillText('START', canvas.width / 2, 224);
+
+    // Front Orange Body
+    ctx.fillStyle = palette.textOrange;
+    ctx.fillText('START', canvas.width / 2, 220);
+
+    // Golden Top Highlight
+    ctx.fillStyle = '#ffcf70';
+    ctx.font = '54px "Press Start 2P", monospace';
+    // Draw top highlight with clip or thin overlay
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 165, canvas.width, 24);
+    ctx.clip();
+    ctx.fillText('START', canvas.width / 2, 220);
+    ctx.restore();
+
+    // Subtitle: ARE YOU READY?
+    ctx.font = '14px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText('ARE YOU READY?', canvas.width / 2, 310);
+
+    // Options: YES ◀       NO
+    ctx.font = '18px "Press Start 2P", monospace';
+
+    // YES
+    ctx.textAlign = 'right';
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText('YES', 210, 368);
+
+    // Triangle Cursor pointing to left
+    if (this.selectedChoice === 'YES') {
+      ctx.fillStyle = palette.textOrange;
+      ctx.beginPath();
+      // Triangle ◀
+      ctx.moveTo(226, 358);
+      ctx.lineTo(240, 350);
+      ctx.lineTo(240, 366);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // NO
+    ctx.textAlign = 'left';
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText('NO', 290, 368);
+
+    if (this.selectedChoice === 'NO') {
+      ctx.fillStyle = palette.textOrange;
+      ctx.beginPath();
+      // Triangle ◀
+      ctx.moveTo(336, 358);
+      ctx.lineTo(350, 350);
+      ctx.lineTo(350, 366);
+      ctx.closePath();
+      ctx.fill();
     }
 
     ctx.restore();
   }
 
-  renderArcadeMenu() {
-    const { ctx, palette, canvas } = this;
+  renderHUD() {
+    const { ctx, palette } = this;
     ctx.save();
 
-    // Arcade Title Logo
-    ctx.textAlign = 'center';
-    ctx.font = '22px "Press Start 2P", monospace';
-    ctx.fillStyle = palette.textAccent;
-    ctx.shadowColor = palette.textAccent;
-    ctx.shadowBlur = 12;
-    ctx.fillText('PIXEL SNAKE', canvas.width / 2, 85);
+    // Top-Left: SCORE & HI-SCORE
+    ctx.font = '12px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText('SCORE', 26, 36);
 
-    ctx.font = '11px "Press Start 2P", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowBlur = 6;
-    ctx.fillText('ARCADE EDITION // 1984', canvas.width / 2, 115);
+    ctx.fillStyle = palette.textOrange;
+    ctx.fillText(this.score.toString().padStart(6, '0'), 26, 58);
 
-    // Blinking INSERT COIN marquee
-    const blink = Math.floor(Date.now() / 450) % 2 === 0;
-    if (blink) {
-      ctx.font = '11px "Press Start 2P", monospace';
-      ctx.fillStyle = palette.goldenFood;
-      ctx.shadowColor = palette.goldenGlow;
-      ctx.shadowBlur = 8;
-      ctx.fillText('★ INSERT COIN TO PLAY ★', canvas.width / 2, 160);
-    }
-
-    // Menu selections list
-    ctx.shadowBlur = 0;
-    ctx.font = '10px "Press Start 2P", monospace';
-    const startY = 210;
-    const lineHeight = 32;
-
-    this.menuOptions.forEach((opt, idx) => {
-      const isSelected = idx === this.menuSelectedIndex;
-      let label = opt.label;
-
-      if (opt.id === 'palette') {
-        label += this.palette.name.toUpperCase();
-      } else if (opt.id === 'crt') {
-        label += this.crtEnabled ? 'ON' : 'OFF';
-      } else if (opt.id === 'audio') {
-        label += this.synth.isMuted ? 'MUTED' : 'ACTIVE';
-      }
-
-      if (isSelected) {
-        ctx.fillStyle = palette.goldenFood;
-        const pointer = (Math.floor(Date.now() / 250) % 2 === 0) ? '► ' : '  ';
-        ctx.fillText(`${pointer}${label}`, canvas.width / 2, startY + (idx * lineHeight));
-      } else {
-        ctx.fillStyle = '#8899aa';
-        ctx.fillText(label, canvas.width / 2, startY + (idx * lineHeight));
-      }
-    });
-
-    // Arcade Footer Details
-    ctx.font = '8px "Press Start 2P", monospace';
-    ctx.fillStyle = '#445566';
-    ctx.fillText('USE ARROWS / WASD TO NAVIGATE • ENTER TO SELECT', canvas.width / 2, 430);
-    ctx.fillText('CREDIT 01  •  UMNG MULTIMEDIA ENGINEERING', canvas.width / 2, 455);
+    // Top-Right: Remaining Lives / Hearts
+    this.drawPixelHearts(335, 30, this.lives);
 
     ctx.restore();
   }
@@ -529,89 +515,66 @@ export class Game {
   renderPauseOverlay() {
     const { ctx, canvas } = this;
     ctx.save();
-    ctx.fillStyle = 'rgba(10, 13, 20, 0.75)';
+    ctx.fillStyle = 'rgba(26, 18, 45, 0.75)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.textAlign = 'center';
-    ctx.font = '18px "Press Start 2P", monospace';
-    ctx.fillStyle = '#fee440';
-    ctx.fillText('GAME PAUSED', canvas.width / 2, canvas.height / 2 - 10);
+    ctx.font = '22px "Press Start 2P", monospace';
+    ctx.fillStyle = '#ff9e1f';
+    ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
 
     ctx.font = '10px "Press Start 2P", monospace';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('PRESS [P] OR [ESC] TO RESUME', canvas.width / 2, canvas.height / 2 + 25);
+    ctx.fillText('PRESS [P] OR [ESC] TO RESUME', canvas.width / 2, canvas.height / 2 + 35);
     ctx.restore();
   }
 
   renderGameOver() {
     const { ctx, canvas, palette } = this;
     ctx.save();
-    ctx.fillStyle = 'rgba(10, 13, 20, 0.85)';
+    ctx.fillStyle = 'rgba(24, 16, 42, 0.85)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.textAlign = 'center';
-    ctx.font = '20px "Press Start 2P", monospace';
-    ctx.fillStyle = '#ff0055';
-    ctx.shadowColor = '#ff0055';
-    ctx.shadowBlur = 14;
-    ctx.fillText('GAME OVER', canvas.width / 2, 130);
+    ctx.font = '24px "Press Start 2P", monospace';
+    ctx.fillStyle = '#ff3b30';
+    ctx.fillText('GAME OVER', canvas.width / 2, 180);
 
-    ctx.shadowBlur = 0;
-    ctx.font = '12px "Press Start 2P", monospace';
+    ctx.font = '13px "Press Start 2P", monospace';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`FINAL SCORE: ${this.score}`, canvas.width / 2, 185);
+    ctx.fillText(`SCORE: ${this.score}`, canvas.width / 2, 230);
 
-    if (this.score >= this.highScore && this.score > 0) {
-      ctx.fillStyle = palette.goldenFood;
-      ctx.fillText('★ NEW HIGH SCORE! ★', canvas.width / 2, 220);
-    } else {
-      ctx.fillStyle = '#8899aa';
-      ctx.fillText(`BEST: ${this.highScore}`, canvas.width / 2, 220);
-    }
+    ctx.fillStyle = palette.textOrange;
+    ctx.fillText(`BEST: ${this.highScore}`, canvas.width / 2, 260);
 
     const blink = Math.floor(Date.now() / 400) % 2 === 0;
     if (blink) {
-      ctx.fillStyle = palette.textAccent;
-      ctx.fillText('PRESS [ENTER] TO RETRY', canvas.width / 2, 310);
+      ctx.fillStyle = palette.textWhite;
+      ctx.fillText('PRESS [ENTER] TO RETRY', canvas.width / 2, 330);
     }
-
-    ctx.font = '9px "Press Start 2P", monospace';
-    ctx.fillStyle = '#667788';
-    ctx.fillText('PRESS [ESC] FOR MAIN MENU', canvas.width / 2, 350);
-
     ctx.restore();
   }
 
-  renderHighScores() {
-    const { ctx, canvas, palette } = this;
+  // Draw the glossy curved reflection lines on the monitor glass (as in reference)
+  drawGlassReflections() {
+    const { ctx, canvas } = this;
     ctx.save();
-    ctx.textAlign = 'center';
 
-    ctx.font = '16px "Press Start 2P", monospace';
-    ctx.fillStyle = palette.goldenFood;
-    ctx.shadowColor = palette.goldenGlow;
-    ctx.shadowBlur = 10;
-    ctx.fillText('★ HALL OF FAME ★', canvas.width / 2, 90);
+    // Left curved glossy reflection
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ctx.moveTo(35, 160);
+    ctx.quadraticCurveTo(38, 70, 110, 40);
+    ctx.stroke();
 
-    ctx.shadowBlur = 0;
-    ctx.font = '11px "Press Start 2P", monospace';
-    const startY = 160;
-    const lineHeight = 36;
-
-    this.highScores.forEach((item, idx) => {
-      const rank = `${idx + 1}ST`;
-      const color = idx === 0 ? palette.goldenFood : (idx === 1 ? '#00f5d4' : '#ffffff');
-      ctx.fillStyle = color;
-      ctx.textAlign = 'left';
-      ctx.fillText(`${rank}  ${item.tag}`, 110, startY + (idx * lineHeight));
-      ctx.textAlign = 'right';
-      ctx.fillText(`${item.score.toString().padStart(5, '0')} PTS`, 370, startY + (idx * lineHeight));
-    });
-
-    ctx.textAlign = 'center';
-    ctx.font = '9px "Press Start 2P", monospace';
-    ctx.fillStyle = '#8899aa';
-    ctx.fillText('PRESS [ENTER] OR [ESC] TO RETURN', canvas.width / 2, 410);
+    // Right subtle reflection
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(canvas.width - 35, 170);
+    ctx.quadraticCurveTo(canvas.width - 38, 80, canvas.width - 100, 45);
+    ctx.stroke();
 
     ctx.restore();
   }
