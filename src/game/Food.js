@@ -1,58 +1,73 @@
-// Food Management (Normal Apples & Golden Bonus Fruits)
+// Robust Food Management with Safe Zone Constraints & Pixel Apple Graphics
 
 export class FoodManager {
   constructor(gridCols, gridRows) {
     this.gridCols = gridCols;
     this.gridRows = gridRows;
-    this.apple = { x: 5, y: 5 };
+
+    // Safe zone margins to avoid monitor curved corners and top HUD
+    this.minX = 2;
+    this.maxX = Math.max(3, gridCols - 3);
+    this.minY = 4; // Below top HUD (Rows 0-3 reserved for SCORE and Hearts)
+    this.maxY = Math.max(5, gridRows - 3);
+
+    this.apple = { x: 10, y: 10 };
     this.golden = null; // { x, y, timeLeft, maxTime }
     this.applesEatenCount = 0;
   }
 
-  // Spawn standard apple in an unoccupied cell
-  spawnApple(occupiedCells) {
+  // Generate coordinates strictly within the safe playable area
+  getRandomSafePos() {
+    const spanX = this.maxX - this.minX + 1;
+    const spanY = this.maxY - this.minY + 1;
+    return {
+      x: this.minX + Math.floor(Math.random() * spanX),
+      y: this.minY + Math.floor(Math.random() * spanY)
+    };
+  }
+
+  // Spawn standard apple in an unoccupied safe cell
+  spawnApple(occupiedCells = []) {
     let newPos;
     let attempts = 0;
+
     do {
-      newPos = {
-        x: Math.floor(Math.random() * this.gridCols),
-        y: Math.floor(Math.random() * this.gridRows)
-      };
+      newPos = this.getRandomSafePos();
       attempts++;
     } while (
-      attempts < 200 &&
+      attempts < 150 &&
       occupiedCells.some(cell => cell.x === newPos.x && cell.y === newPos.y)
     );
 
     this.apple = newPos;
     this.applesEatenCount++;
 
-    // Spawn golden fruit every 5 apples if not already active
+    // Spawn bonus golden apple every 5 apples
     if (this.applesEatenCount % 5 === 0 && !this.golden) {
       this.spawnGolden(occupiedCells);
     }
+
+    return this.apple;
   }
 
-  spawnGolden(occupiedCells) {
+  spawnGolden(occupiedCells = []) {
     let newPos;
     let attempts = 0;
+
     do {
-      newPos = {
-        x: Math.floor(Math.random() * this.gridCols),
-        y: Math.floor(Math.random() * this.gridRows)
-      };
+      newPos = this.getRandomSafePos();
       attempts++;
     } while (
-      attempts < 200 &&
-      (this.apple.x === newPos.x && this.apple.y === newPos.y ||
+      attempts < 150 &&
+      ((this.apple && this.apple.x === newPos.x && this.apple.y === newPos.y) ||
        occupiedCells.some(cell => cell.x === newPos.x && cell.y === newPos.y))
     );
 
     this.golden = {
       x: newPos.x,
       y: newPos.y,
-      timeLeft: 10000, // 10 seconds lifespan
-      maxTime: 10000
+      timeLeft: 9000, // 9 seconds lifespan
+      maxTime: 9000
     };
   }
 
@@ -60,53 +75,86 @@ export class FoodManager {
     if (this.golden) {
       this.golden.timeLeft -= deltaMs;
       if (this.golden.timeLeft <= 0) {
-        this.golden = null; // expired
+        this.golden = null;
       }
+    }
+
+    // Safety fallback: ensure normal apple always exists in safe bounds
+    if (!this.apple || 
+        this.apple.x < this.minX || this.apple.x > this.maxX ||
+        this.apple.y < this.minY || this.apple.y > this.maxY) {
+      this.apple = this.getRandomSafePos();
     }
   }
 
   draw(ctx, cellSize, palette) {
-    // 1. Draw Normal Apple (Pixel shape)
-    const ax = this.apple.x * cellSize;
-    const ay = this.apple.y * cellSize;
+    // 1. Draw Normal Apple (High-visibility Retro Pixel Apple)
+    if (this.apple) {
+      const ax = this.apple.x * cellSize;
+      const ay = this.apple.y * cellSize;
 
-    ctx.save();
-    ctx.fillStyle = palette.food;
-    ctx.shadowColor = palette.foodGlow;
-    ctx.shadowBlur = 8;
-    // Draw 8-bit rounded pixel square
-    ctx.fillRect(ax + 2, ay + 2, cellSize - 4, cellSize - 4);
+      ctx.save();
 
-    // Pixel highlight shine
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(ax + 4, ay + 4, 3, 3);
-    ctx.restore();
+      // Subtle pulse to ensure high visibility
+      const pulse = Math.sin(Date.now() * 0.008) * 1.2;
 
-    // 2. Draw Golden Bonus Apple (Pulsing + circular countdown ring)
+      // Glow aura
+      ctx.shadowColor = '#ff334b';
+      ctx.shadowBlur = 10;
+
+      // Red Apple Body
+      ctx.fillStyle = '#ff2a44';
+      ctx.fillRect(
+        ax + 2 - pulse / 2,
+        ay + 3 - pulse / 2,
+        cellSize - 4 + pulse,
+        cellSize - 5 + pulse
+      );
+
+      // Top Highlight
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ff7888';
+      ctx.fillRect(ax + 4, ay + 5, 4, 4);
+
+      // Green Leaf on top
+      ctx.fillStyle = '#39e75f';
+      ctx.fillRect(ax + Math.floor(cellSize / 2) - 1, ay + 1, 3, 2);
+      ctx.fillRect(ax + Math.floor(cellSize / 2) + 2, ay, 2, 2);
+
+      ctx.restore();
+    }
+
+    // 2. Draw Golden Bonus Apple (Pulsing Amber Gold with Countdown)
     if (this.golden) {
       const gx = this.golden.x * cellSize;
       const gy = this.golden.y * cellSize;
-      const progress = this.golden.timeLeft / this.golden.maxTime;
+      const progress = Math.max(0, this.golden.timeLeft / this.golden.maxTime);
 
       ctx.save();
-      ctx.fillStyle = palette.goldenFood;
-      ctx.shadowColor = palette.goldenGlow;
-      ctx.shadowBlur = 12;
+      const goldPulse = Math.sin(Date.now() * 0.012) * 2;
 
-      // Pulse size slightly
-      const pulse = Math.sin(Date.now() * 0.01) * 1.5;
+      ctx.shadowColor = '#fda415';
+      ctx.shadowBlur = 14;
+
+      // Golden fruit body
+      ctx.fillStyle = '#fda415';
       ctx.fillRect(
-        gx + 2 - pulse / 2,
-        gy + 2 - pulse / 2,
-        cellSize - 4 + pulse,
-        cellSize - 4 + pulse
+        gx + 2 - goldPulse / 2,
+        gy + 2 - goldPulse / 2,
+        cellSize - 4 + goldPulse,
+        cellSize - 4 + goldPulse
       );
 
-      // Countdown timer bar underneath
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.fillRect(gx + 2, gy + cellSize - 2, cellSize - 4, 2);
-      ctx.fillStyle = palette.goldenFood;
-      ctx.fillRect(gx + 2, gy + cellSize - 2, (cellSize - 4) * progress, 2);
+      // Bright shine
+      ctx.fillStyle = '#fff5ea';
+      ctx.fillRect(gx + 4, gy + 4, 4, 4);
+
+      // Countdown timer bar directly underneath
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.fillRect(gx + 2, gy + cellSize, cellSize - 4, 2);
+      ctx.fillStyle = '#fda415';
+      ctx.fillRect(gx + 2, gy + cellSize, (cellSize - 4) * progress, 2);
 
       ctx.restore();
     }

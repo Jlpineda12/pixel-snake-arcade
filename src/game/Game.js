@@ -230,7 +230,7 @@ export class Game {
     }
 
     // Normal Apple
-    if (newHead.x === this.food.apple.x && newHead.y === this.food.apple.y) {
+    if (this.food.apple && newHead.x === this.food.apple.x && newHead.y === this.food.apple.y) {
       this.snake.grow(1);
       this.score += 100;
       const px = this.food.apple.x * this.cellSize + this.cellSize / 2;
@@ -280,6 +280,10 @@ export class Game {
         this.particles.burst(sx, sy, this.palette.snakeHead, 6, 3);
       }
       this.snake.reset();
+      // Ensure apple does not spawn right under the respawned snake
+      if (this.snake.body.some(seg => seg.x === this.food.apple.x && seg.y === this.food.apple.y)) {
+        this.food.spawnApple(this.snake.body);
+      }
     } else {
       this.state = GAME_STATES.GAME_OVER;
       this.sfx.gameOver();
