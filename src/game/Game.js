@@ -6,6 +6,7 @@ import { PALETTES } from './Palettes.js';
 
 export const GAME_STATES = {
   MENU: 'MENU',
+  CONTROLS: 'CONTROLS',
   PLAYING: 'PLAYING',
   PAUSED: 'PAUSED',
   GAME_OVER: 'GAME_OVER'
@@ -64,7 +65,17 @@ export class Game {
       }
 
       if (this.state === GAME_STATES.MENU) {
-        this.handleMenuInput(e);
+        if (e.code === 'KeyC') {
+          this.sfx.menuConfirm();
+          this.state = GAME_STATES.CONTROLS;
+        } else {
+          this.handleMenuInput(e);
+        }
+      } else if (this.state === GAME_STATES.CONTROLS) {
+        if (e.code === 'Enter' || e.code === 'Escape' || e.code === 'Space' || e.code === 'KeyC') {
+          this.sfx.menuConfirm();
+          this.state = GAME_STATES.MENU;
+        }
       } else if (this.state === GAME_STATES.PLAYING) {
         this.handlePlayingInput(e);
       } else if (this.state === GAME_STATES.PAUSED) {
@@ -332,6 +343,8 @@ export class Game {
     // 5. Menus and HUD
     if (this.state === GAME_STATES.MENU) {
       this.renderReferenceMenu();
+    } else if (this.state === GAME_STATES.CONTROLS) {
+      this.renderControls();
     } else if (this.state === GAME_STATES.PLAYING) {
       this.renderHUD();
     } else if (this.state === GAME_STATES.PAUSED) {
@@ -491,6 +504,61 @@ export class Game {
       ctx.closePath();
       ctx.fill();
     }
+
+    // Controls prompt in menu
+    ctx.textAlign = 'center';
+    ctx.font = '10px "Press Start 2P", monospace';
+    ctx.fillStyle = '#b39ebd';
+    ctx.fillText('PRESS [C] FOR CONTROLS', centerX, 392);
+
+    ctx.restore();
+  }
+
+  renderControls() {
+    const { ctx, palette, canvas } = this;
+    ctx.save();
+    ctx.textAlign = 'center';
+
+    const cx = canvas.width / 2;
+
+    // Header
+    ctx.font = '18px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textAmberTop;
+    ctx.fillText('★ CONTROLS ★', cx, 65);
+
+    // Box
+    ctx.fillStyle = 'rgba(25, 12, 30, 0.7)';
+    ctx.fillRect(50, 95, canvas.width - 100, 230);
+    ctx.strokeStyle = palette.textAmberTop;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(50, 95, canvas.width - 100, 230);
+
+    ctx.font = '11px "Press Start 2P", monospace';
+    const lines = [
+      { k: 'ARROWS / WASD', d: 'MOVE SNAKE' },
+      { k: 'ENTER / SPACE', d: 'CONFIRM / START' },
+      { k: 'P / ESC', d: 'PAUSE GAME' },
+      { k: 'APPLES', d: '+100 PTS & GROW' },
+      { k: 'GOLDEN FRUIT', d: '+500 PTS (TIMED)' }
+    ];
+
+    let y = 140;
+    lines.forEach(item => {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = palette.textAmberTop;
+      ctx.fillText(item.k, 80, y);
+
+      ctx.textAlign = 'right';
+      ctx.fillStyle = palette.textWhite;
+      ctx.fillText(item.d, canvas.width - 80, y);
+      y += 34;
+    });
+
+    // Return prompt
+    ctx.textAlign = 'center';
+    ctx.font = '10px "Press Start 2P", monospace';
+    ctx.fillStyle = palette.textWhite;
+    ctx.fillText('PRESS [ENTER] OR [ESC] TO RETURN', cx, 375);
 
     ctx.restore();
   }
