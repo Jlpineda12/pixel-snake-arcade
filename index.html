@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pixel Snake Arcade 1984 | Chiptune Edition</title>
+  <meta name="description" content="Pixel Snake Retro Arcade 1984 con música chiptune generada proceduralmente en tiempo real con Web Audio API. Desarrollado por Jose Luis Pineda (Ingeniería en Multimedia).">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐍</text></svg>">
+</head>
+<body>
+
+  <!-- Retro Marquee Header -->
+  <header class="arcade-header">
+    <h1 class="arcade-title">⚡ PIXEL SNAKE ARCADE ⚡</h1>
+    <p class="arcade-subtitle">CHIPTUNE AUDIO SYNTHESIS • INGENIERÍA EN MULTIMEDIA</p>
+  </header>
+
+  <!-- Arcade Cabinet Monitor Bezel -->
+  <main class="cabinet-bezel">
+    <!-- Top Bezel Status LEDs -->
+    <div class="bezel-top-lights">
+      <div class="led-indicator">
+        <div class="led-bulb"></div>
+        <span>AUDIO SYNTH: LIVE</span>
+      </div>
+      <div class="led-brand">NEO-GEO STYLE CABINET // MODEL 84</div>
+      <div class="led-indicator">
+        <span>HI-FI STEREO</span>
+      </div>
+    </div>
+
+    <!-- Screen Wrapper with CRT Scanline Filter -->
+    <div class="screen-wrapper">
+      <canvas id="game-canvas" width="480" height="480"></canvas>
+      <div id="crt-overlay" class="crt-overlay"></div>
+    </div>
+
+    <!-- Virtual Mobile Touch Controls (shown on small screens) -->
+    <section class="mobile-controls" aria-label="Controles táctiles móviles">
+      <div class="d-pad">
+        <div></div>
+        <button id="btn-up" class="d-btn" aria-label="Arriba">▲</button>
+        <div></div>
+        <button id="btn-left" class="d-btn" aria-label="Izquierda">◀</button>
+        <div></div>
+        <button id="btn-right" class="d-btn" aria-label="Derecha">▶</button>
+        <div></div>
+        <button id="btn-down" class="d-btn" aria-label="Abajo">▼</button>
+        <div></div>
+      </div>
+
+      <div class="action-buttons">
+        <button id="btn-b" class="act-btn btn-b" aria-label="Atrás o Pausa">ESC</button>
+        <button id="btn-a" class="act-btn btn-a" aria-label="Confirmar o Iniciar">START</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer Info & Credits -->
+  <footer class="arcade-footer">
+    <p>Teclas: [W, A, S, D] o [Flechas] para moverte • [Enter / Espacio] para seleccionar • [P / Esc] pausa</p>
+    <p>Desarrollado por <a href="https://github.com/Jlpineda12" target="_blank" rel="noopener">Jose Luis Pineda (Jlpineda12)</a></p>
+  </footer>
+
+  <!-- App Entry Script -->
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
