@@ -88,7 +88,7 @@ export class SynthEngine {
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.linearRampToValueAtTime(volume, now + attack);
     gain.gain.linearRampToValueAtTime(volume * sustain, now + attack + decay);
-    gain.gain.setValueAtTime(volume * sustain, now + duration - release);
+    gain.gain.setValueAtTime(volume * sustain, Math.max(now + attack + decay, now + duration - release));
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
     osc.connect(gain);

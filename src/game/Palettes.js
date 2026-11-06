@@ -6,7 +6,7 @@ export const PALETTES = {
     // Screen colors from reference image
     screenBg: '#351d3d',
     screenInner: '#391f44',
-    grid: 'rgba(92, 54, 102, 0.35)',
+    grid: 'rgba(0, 245, 212, 0.07)',
     bezelBorder: '#28162e',
     glassHighlight: 'rgba(255, 255, 255, 0.09)',
 

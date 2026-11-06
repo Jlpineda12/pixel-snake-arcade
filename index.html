@@ -3,75 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pixel Snake Arcade | Retro Edition</title>
-  <meta name="description" content="Pixel Snake Retro Arcade con música chiptune generada proceduralmente en tiempo real con Web Audio API. Desarrollado por Jose Luis Pineda (Ingeniería en Multimedia).">
-  <link rel="stylesheet" href="style.css">
+  <title>PIXEL SNAKE 1976 | JLP Retro Arcade</title>
+  <meta name="description" content="Snake retro con música chiptune procedural en tiempo real (Web Audio API), 4 paletas y frutas doradas. Por Jose Luis Pineda (Ingeniería en Multimedia).">
+  <meta name="theme-color" content="#07020f">
+  <meta property="og:title" content="PIXEL SNAKE 1976">
+  <meta property="og:description" content="Snake retro con música chiptune procedural en tiempo real (Web Audio API), 4 paletas y frutas doradas.">
+  <meta property="og:image" content="https://jlpineda12.github.io/pixel-snake-arcade/docs/screenshots/menu.png">
+  <link rel="stylesheet" href="src/shell/shell.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐍</text></svg>">
 </head>
 <body>
-
-  <!-- Perspective 4-Wall Room Background matching reference illustration -->
-  <svg class="room-perspective-bg" viewBox="0 0 1000 800" preserveAspectRatio="none" aria-hidden="true">
-    <!-- Top wall (dark slate navy) -->
-    <polygon points="0,0 1000,0 780,140 220,140" fill="#2f2e50" />
-    <!-- Bottom wall (lighter slate periwinkle) -->
-    <polygon points="0,800 1000,800 780,660 220,660" fill="#6060a8" />
-    <!-- Left wall (medium periwinkle) -->
-    <polygon points="0,0 220,140 220,660 0,800" fill="#494883" />
-    <!-- Right wall (medium periwinkle) -->
-    <polygon points="1000,0 780,140 780,660 1000,800" fill="#494883" />
-    <!-- Perspective Corner Seam Shadows -->
-    <line x1="0" y1="0" x2="220" y2="140" stroke="#242340" stroke-width="2.5" />
-    <line x1="1000" y1="0" x2="780" y2="140" stroke="#242340" stroke-width="2.5" />
-    <line x1="0" y1="800" x2="220" y2="660" stroke="#242340" stroke-width="2.5" />
-    <line x1="1000" y1="800" x2="780" y2="660" stroke="#242340" stroke-width="2.5" />
-  </svg>
-
   <div class="arcade-viewport">
-    <!-- Arcade Cabinet Chassis -->
+    <header data-marquee></header>
+
     <main class="arcade-cabinet">
-      <!-- 4:3 Rounded CRT / LCD Dot-Matrix Monitor -->
       <div class="screen-wrapper">
-        <canvas id="game-canvas" width="560" height="420"></canvas>
-        <div id="crt-overlay" class="lcd-dotmatrix-overlay"></div>
+        <canvas id="game-canvas" width="560" height="420" aria-label="Pantalla del juego"></canvas>
       </div>
-
-      <!-- Non-Interactive Decorative Hardware Control Deck (Joystick + Pushbuttons) -->
-      <section class="arcade-control-deck" aria-hidden="true">
-        <!-- Arcade Joystick (Palanca) -->
-        <div class="joystick-assembly">
-          <div class="joystick-washer"></div>
-          <div class="joystick-shaft"></div>
-          <div class="joystick-balltop"></div>
-        </div>
-
-        <div class="deck-label">★ ARCADE 1984 ★</div>
-
-        <!-- Arcade Pushbuttons (Botones) -->
-        <div class="buttons-assembly">
-          <div class="arcade-btn-socket">
-            <div class="arcade-pushbutton">
-              <div class="btn-cap cap-amber"></div>
-            </div>
-            <span class="btn-tag">A</span>
-          </div>
-          <div class="arcade-btn-socket">
-            <div class="arcade-pushbutton">
-              <div class="btn-cap cap-red"></div>
-            </div>
-            <span class="btn-tag">B</span>
-          </div>
-        </div>
-      </section>
+      <section class="arcade-control-deck"></section>
     </main>
 
-    <!-- Instructions & Credits -->
-    <footer class="arcade-footer">
-      <p>Desarrollado por <a href="https://github.com/Jlpineda12" target="_blank" rel="noopener">Jose Luis Pineda (Jlpineda12)</a> • Ingeniería en Multimedia</p>
-    </footer>
+    <footer data-status></footer>
+    <p class="arcade-footer">
+      Parte de <a href="https://jlpineda12.github.io/arcade-station/">Arcade Station</a> ·
+      Hecho a mano por <a href="https://github.com/Jlpineda12" target="_blank" rel="noopener">Jose Luis Pineda</a> · Ingeniería en Multimedia
+    </p>
   </div>
 
-  <!-- App Entry Script -->
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

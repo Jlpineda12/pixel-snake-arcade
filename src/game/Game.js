@@ -1,4 +1,5 @@
 // Main Arcade Game Controller matching reference design
+import { renderThemedMenu, drawThemedBackdrop } from './MenuFX.js';
 import { Snake } from './Snake.js';
 import { FoodManager } from './Food.js';
 import { ParticleSystem } from './Particles.js';
@@ -317,9 +318,8 @@ export class Game {
     const { ctx, canvas } = this;
     ctx.save();
 
-    // 1. Draw Arcade Plum Screen Background (#351d3d)
-    ctx.fillStyle = this.palette.screenBg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 1. Themed animated backdrop (neon circuit grid)
+    drawThemedBackdrop(ctx, 'snake', canvas.width, canvas.height);
 
     // Screen Shake
     if (this.shakeIntensity > 0) {
@@ -353,9 +353,7 @@ export class Game {
     } else if (this.state === GAME_STATES.GAME_OVER) {
       this.renderGameOver();
     }
-
-    // 6. Specular curved glass reflections
-    this.drawGlassReflections();
+    // Glass glare is now rendered by the CRT shell (CSS)
 
     ctx.restore();
   }
@@ -427,95 +425,21 @@ export class Game {
 
   // Exact reproduction of User's Image
   renderReferenceMenu() {
-    const { ctx, palette, canvas } = this;
-    ctx.save();
-
-    // Top-Left: HI-SCORE
-    ctx.font = '14px "Press Start 2P", monospace';
-    ctx.fillStyle = palette.textWhite;
-    ctx.fillText('HI-SCORE', 34, 46);
-
-    ctx.fillStyle = palette.textAmberTop;
-    const formattedScore = this.highScore.toString().padStart(6, '0');
-    ctx.fillText(formattedScore, 34, 72);
-
-    // Top-Right: 5 Orange Pixel Hearts
-    this.drawPixelHearts(380, 36, 5);
-
-    // Center Big Orange Title: START (with top-to-bottom amber shading & dark outline)
-    ctx.textAlign = 'center';
-
-    const centerX = canvas.width / 2;
-    const centerY = 210;
-
-    // 1. Dark bottom outline / shadow
-    ctx.font = '54px "Press Start 2P", monospace';
-    ctx.fillStyle = palette.textAmberShadow;
-    ctx.fillText('START', centerX, centerY + 4);
-
-    // 2. Base warm orange body
-    ctx.fillStyle = palette.textAmberBottom;
-    ctx.fillText('START', centerX, centerY);
-
-    // 3. Top golden highlight (clipped to upper half of letters)
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, centerY - 60, canvas.width, 28);
-    ctx.clip();
-    ctx.fillStyle = palette.textAmberTop;
-    ctx.fillText('START', centerX, centerY);
-    ctx.restore();
-
-    // Subtitle: ARE YOU READY? in white/cream
-    ctx.font = '14px "Press Start 2P", monospace';
-    ctx.fillStyle = palette.textWhite;
-    ctx.fillText('ARE YOU READY?', centerX, 295);
-
-    // Options: YES ◀       NO
-    ctx.font = '18px "Press Start 2P", monospace';
-
-    // YES
-    ctx.textAlign = 'right';
-    ctx.fillStyle = palette.textWhite;
-    ctx.fillText('YES', 230, 354);
-
-    // Triangle Cursor ◀
-    if (this.selectedChoice === 'YES') {
-      ctx.fillStyle = palette.textAmberTop;
-      ctx.beginPath();
-      ctx.moveTo(244, 346);
-      ctx.lineTo(258, 338);
-      ctx.lineTo(258, 354);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // NO
-    ctx.textAlign = 'left';
-    ctx.fillStyle = palette.textWhite;
-    ctx.fillText('NO', 320, 354);
-
-    if (this.selectedChoice === 'NO') {
-      ctx.fillStyle = palette.textAmberTop;
-      ctx.beginPath();
-      ctx.moveTo(366, 346);
-      ctx.lineTo(380, 338);
-      ctx.lineTo(380, 354);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // Controls prompt in menu
-    ctx.textAlign = 'center';
-    ctx.font = '10px "Press Start 2P", monospace';
-    ctx.fillStyle = '#b39ebd';
-    ctx.fillText('PRESS [C] FOR CONTROLS', centerX, 392);
-
-    ctx.restore();
+    // Themed animated title screen (backdrop, wave title, attract-mode scene)
+    renderThemedMenu(this.ctx, {
+      id: 'snake',
+      width: this.canvas.width,
+      height: this.canvas.height,
+      highScore: this.highScore,
+      choice: this.selectedChoice
+    });
   }
 
   renderControls() {
     const { ctx, palette, canvas } = this;
+    drawThemedBackdrop(ctx, 'snake', this.canvas.width, this.canvas.height);
+    ctx.fillStyle = 'rgba(8, 3, 14, 0.55)';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.save();
     ctx.textAlign = 'center';
 
